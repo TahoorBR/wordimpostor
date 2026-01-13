@@ -44,7 +44,6 @@ export async function POST(request: Request) {
         
         // Reset player states and assign roles
         game.room.players.forEach((p, idx) => {
-          p.hasSubmittedClue = false;
           p.hasVoted = false;
           p.votes = 0;
           p.isImpostor = impostorIndices.has(idx);
@@ -104,21 +103,6 @@ export async function POST(request: Request) {
             }
             game.room.currentTurnIndex = nextIndex;
           }
-          
-          await updateRoom(code, game);
-        }
-        return NextResponse.json(game);
-      }
-
-      case 'submitClue': {
-        const player = game.room.players.find(p => p.id === playerId);
-        if (player && !player.isEliminated) {
-          player.hasSubmittedClue = true;
-          game.clues.push({
-            playerId,
-            clue: data.clue,
-            round: game.room.currentRound || 1,
-          });
           
           await updateRoom(code, game);
         }

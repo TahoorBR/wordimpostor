@@ -18,6 +18,8 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   const [revealTimeLeft, setRevealTimeLeft] = useState(0);
   const [eliminationTimeLeft, setEliminationTimeLeft] = useState(0);
   const [impostorCountTimeLeft, setImpostorCountTimeLeft] = useState(0);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchGameState = useCallback(async () => {
     try {
@@ -162,25 +164,35 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     const player = gameState.room.players.find(p => p.id === profile.id);
     const newReadyState = !player?.isReady;
     
-    await fetch('/api/game', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'ready',
-        code: resolvedParams.code,
-        playerId: profile.id,
-        data: { ready: newReadyState },
-      }),
-    });
-    
-    fetchGameState();
+    setActionLoading(true);
+    setError(null);
+    try {
+      await fetch('/api/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ready',
+          code: resolvedParams.code,
+          playerId: profile.id,
+          data: { ready: newReadyState },
+        }),
+      });
+      
+      fetchGameState();
+    } catch (err) {
+      setError('Failed to update ready status. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const startGame = async () => {
     if (!profile) return;
     
+    setActionLoading(true);
+    setError(null);
     try {
-      await fetch('/api/game', {
+      const response = await fetch('/api/game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -190,43 +202,65 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         }),
       });
       
+      if (!response.ok) {
+        throw new Error('Failed to start game');
+      }
+      
       fetchGameState();
-    } catch {
-      alert('Failed to start game');
+    } catch (err) {
+      setError('Failed to start game. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const markTurnDone = async () => {
     if (!profile) return;
     
-    await fetch('/api/game', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'markTurnDone',
-        code: resolvedParams.code,
-        playerId: profile.id,
-      }),
-    });
-    
-    fetchGameState();
+    setActionLoading(true);
+    setError(null);
+    try {
+      await fetch('/api/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'markTurnDone',
+          code: resolvedParams.code,
+          playerId: profile.id,
+        }),
+      });
+      
+      fetchGameState();
+    } catch (err) {
+      setError('Failed to mark turn as done. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const submitVote = async (targetId: string | null = null) => {
     if (!profile) return;
     
-    await fetch('/api/game', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'vote',
-        code: resolvedParams.code,
-        playerId: profile.id,
-        data: { targetId },
-      }),
-    });
-    
-    fetchGameState();
+    setActionLoading(true);
+    setError(null);
+    try {
+      await fetch('/api/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'vote',
+          code: resolvedParams.code,
+          playerId: profile.id,
+          data: { targetId },
+        }),
+      });
+      
+      fetchGameState();
+    } catch (err) {
+      setError('Failed to submit vote. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const leaveRoom = async () => {
@@ -289,6 +323,13 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           <S.LobbyCard>
             <h2>Waiting Lobby</h2>
             
+            {error && (
+              <S.ErrorBanner>
+                <span>⚠️</span>
+                <p>{error}</p>
+              </S.ErrorBanner>
+            )}
+            
             <S.PlayersGrid>
               {gameState.room.players.map((player) => (
                 <S.PlayerCard key={player.id} $ready={player.isReady}>
@@ -311,16 +352,17 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               <S.ReadyButton
                 onClick={toggleReady}
                 $ready={myPlayer?.isReady}
+                disabled={actionLoading}
               >
-                {myPlayer?.isReady ? '❌ Not Ready' : '✓ Ready'}
+                {actionLoading ? <S.LoadingSpinner /> : (myPlayer?.isReady ? '❌ Not Ready' : '✓ Ready')}
               </S.ReadyButton>
               
               {isHost && (
                 <S.StartButton
                   onClick={startGame}
-                  disabled={!canStart}
+                  disabled={!canStart || actionLoading}
                 >
-                  🎮 Start Game
+                  {actionLoading ? <S.LoadingSpinner /> : '🎮 Start Game'}
                 </S.StartButton>
               )}
             </S.ActionRow>
@@ -369,26 +411,42 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         {/* Playing Phase - Turn-based */}
         {gameState.room.status === 'playing' && (
           <S.GameSection>
-            {/* Current Turn Indicator */}
-            <S.TurnCard>
-              <h2>🎯 Current Turn</h2>
-              <S.TurnPlayer>
-                <S.TurnAvatar>{currentTurnPlayer?.avatar}</S.TurnAvatar>
-                <S.TurnName>
-                  {isMyTurn ? "It's your turn!" : `${currentTurnPlayer?.name}'s turn`}
-                </S.TurnName>
-              </S.TurnPlayer>
-              {isMyTurn && !myPlayer?.hasDoneTurn && !myPlayer?.isEliminated && (
-                <>
-                  <S.InfoText style={{ marginTop: '1rem', textAlign: 'center' }}>
-                    Think about the word and click Done when ready
-                  </S.InfoText>
-                  <S.DoneButton onClick={markTurnDone}>
-                    ✓ Done
-                  </S.DoneButton>
-                </>
-              )}
-            </S.TurnCard>
+            {error && (
+              <S.ErrorBanner>
+                <span>⚠️</span>
+                <p>{error}</p>
+              </S.ErrorBanner>
+            )}
+
+            {myPlayer?.isEliminated ? (
+              <S.SpectatorCard>
+                <h3>👻 Spectator Mode</h3>
+                <p>You've been eliminated. Watch the game unfold and see who wins!</p>
+              </S.SpectatorCard>
+            ) : (
+              <>
+                {/* Current Turn Indicator */}
+                <S.TurnCard>
+                  <h2>🎯 Current Turn</h2>
+                  <S.TurnPlayer>
+                    <S.TurnAvatar>{currentTurnPlayer?.avatar}</S.TurnAvatar>
+                    <S.TurnName>
+                      {isMyTurn ? "It's your turn!" : `${currentTurnPlayer?.name}'s turn`}
+                    </S.TurnName>
+                  </S.TurnPlayer>
+                  {isMyTurn && !myPlayer?.hasDoneTurn && !myPlayer?.isEliminated && (
+                    <>
+                      <S.InfoText style={{ marginTop: '1rem', textAlign: 'center' }}>
+                        Say a word related to your word out loud, then click Done
+                      </S.InfoText>
+                      <S.DoneButton onClick={markTurnDone} disabled={actionLoading}>
+                        {actionLoading ? <S.LoadingSpinner /> : '✓ Done'}
+                      </S.DoneButton>
+                    </>
+                  )}
+                </S.TurnCard>
+              </>
+            )}
 
             {/* Player Progress */}
             <S.Card style={{ padding: '1.5rem', marginTop: '1rem' }}>
@@ -496,10 +554,18 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               <span>Vote for the Impostor</span>
             </h2>
 
+            {error && (
+              <S.ErrorBanner>
+                <span>⚠️</span>
+                <p>{error}</p>
+              </S.ErrorBanner>
+            )}
+
             {myPlayer?.isEliminated ? (
-              <S.InfoText style={{ textAlign: 'center', padding: '2rem', fontSize: '1.125rem' }}>
-                You were eliminated. Watch as others vote!
-              </S.InfoText>
+              <S.SpectatorCard>
+                <h3>👻 Spectator Mode</h3>
+                <p>You were eliminated. Watch as others vote!</p>
+              </S.SpectatorCard>
             ) : (
               <>
                 <S.VoteGrid>
@@ -527,14 +593,14 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
                 {!myPlayer?.hasVoted && (
                   <S.ActionRow>
-                    <S.SkipButton onClick={() => submitVote(null)}>
-                      ⏭️ Skip Vote
+                    <S.SkipButton onClick={() => submitVote(null)} disabled={actionLoading}>
+                      {actionLoading ? <S.LoadingSpinner /> : '⏭️ Skip Vote'}
                     </S.SkipButton>
                     <S.CastVoteButton
                       onClick={() => submitVote(selectedVote)}
-                      disabled={!selectedVote}
+                      disabled={!selectedVote || actionLoading}
                     >
-                      Cast Vote
+                      {actionLoading ? <S.LoadingSpinner /> : 'Cast Vote'}
                     </S.CastVoteButton>
                   </S.ActionRow>
                 )}

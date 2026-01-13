@@ -4,7 +4,6 @@ export interface Player {
   avatar: string;
   isReady: boolean;
   isHost: boolean;
-  hasSubmittedClue?: boolean;
   hasVoted?: boolean;
   votes?: number;
   isImpostor?: boolean;
@@ -39,7 +38,6 @@ export interface GameState {
   word?: string;
   isImpostor?: boolean;
   wordAssignments?: { [playerId: string]: { word: string; isImpostor: boolean } };
-  clues: { playerId: string; clue: string; round: number }[];
   votes: { voterId: string; targetId: string }[];
   revealed?: boolean;
   winner?: 'impostors' | 'regulars' | null;

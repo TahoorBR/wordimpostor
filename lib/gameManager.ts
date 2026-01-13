@@ -17,7 +17,6 @@ export const createRoom = async (host: Player, code: string, settings: RoomSetti
 
   const gameState: GameState = {
     room,
-    clues: [],
     votes: [],
   };
 

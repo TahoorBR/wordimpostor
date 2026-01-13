@@ -214,6 +214,64 @@ export const EliminatedBadge = styled.div`
   letter-spacing: 0.02em;
 `;
 
+export const SpectatorCard = styled.div`
+  background: #fef3c7;
+  border: 1.5px solid #fbbf24;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+
+  h3 {
+    color: #92400e;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+  }
+
+  p {
+    color: #78350f;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+`;
+
+export const LoadingSpinner = styled.div`
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 0.8s linear infinite;
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+export const ErrorBanner = styled.div`
+  background: #fef2f2;
+  border: 1.5px solid #f87171;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  span:first-child {
+    font-size: 1.25rem;
+  }
+
+  p {
+    color: #991b1b;
+    font-weight: 500;
+    font-size: 0.95rem;
+    margin: 0;
+  }
+`;
+
 export const ActionRow = styled.div`
   display: flex;
   flex-direction: column;
@@ -237,9 +295,15 @@ export const Button = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.01em;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 
   @media (min-width: 768px) {
     font-size: 1rem;
+    min-height: 48px;
   }
 
   &:disabled {
