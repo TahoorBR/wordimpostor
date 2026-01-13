@@ -172,38 +172,62 @@ export async function POST(request: Request) {
               };
             }
             
-            // Check win conditions
-            const remainingPlayers = game.room.players.filter(p => !p.isEliminated);
-            const remainingImpostors = remainingPlayers.filter(p => p.isImpostor);
-            
-            if (remainingImpostors.length === 0) {
-              // All impostors eliminated - regulars win
-              game.room.status = 'finished';
-              game.revealed = true;
-              game.winner = 'regulars';
-            } else if (game.room.currentRound >= game.room.settings.totalRounds) {
-              // All rounds finished - impostors win if still alive
-              game.room.status = 'finished';
-              game.revealed = true;
-              game.winner = 'impostors';
-            } else {
-              // Continue to next round
-              game.room.currentRound++;
-              game.room.status = 'playing';
-              game.room.currentTurnIndex = 0;
-              
-              // Reset turn flags for next round
-              game.room.players.forEach(p => {
-                p.hasDoneTurn = false;
-                p.hasVoted = false;
-                p.votes = 0;
-              });
-              
-              // Clear votes for next round
-              game.votes = [];
-            }
+            // Move to elimination result screen
+            game.room.status = 'elimination_result';
+            game.room.eliminationResultEndTime = Date.now() + 5000; // 5 seconds
           }
           
+          await updateRoom(code, game);
+        }
+        return NextResponse.json(game);
+      }
+
+      case 'checkEliminationResult': {
+        // Auto-transition from elimination_result after 5 seconds
+        if (game.room.status === 'elimination_result' && game.room.eliminationResultEndTime && Date.now() >= game.room.eliminationResultEndTime) {
+          // Check win conditions
+          const remainingPlayers = game.room.players.filter(p => !p.isEliminated);
+          const remainingImpostors = remainingPlayers.filter(p => p.isImpostor);
+          
+          if (remainingImpostors.length === 0) {
+            // All impostors eliminated - regulars win
+            game.room.status = 'finished';
+            game.revealed = true;
+            game.winner = 'regulars';
+          } else if (game.room.currentRound >= game.room.settings.totalRounds) {
+            // All rounds finished - impostors win if still alive
+            game.room.status = 'finished';
+            game.revealed = true;
+            game.winner = 'impostors';
+          } else {
+            // Continue to next round - show impostor count screen
+            game.room.currentRound++;
+            game.room.status = 'impostor_count';
+            game.room.impostorCountEndTime = Date.now() + 5000; // 5 seconds
+            
+            // Reset turn flags for next round
+            game.room.players.forEach(p => {
+              p.hasDoneTurn = false;
+              p.hasVoted = false;
+              p.votes = 0;
+            });
+            
+            // Clear votes for next round
+            game.votes = [];
+          }
+          
+          game.room.eliminationResultEndTime = undefined;
+          await updateRoom(code, game);
+        }
+        return NextResponse.json(game);
+      }
+
+      case 'checkImpostorCount': {
+        // Auto-transition from impostor_count to playing after 5 seconds
+        if (game.room.status === 'impostor_count' && game.room.impostorCountEndTime && Date.now() >= game.room.impostorCountEndTime) {
+          game.room.status = 'playing';
+          game.room.currentTurnIndex = 0;
+          game.room.impostorCountEndTime = undefined;
           await updateRoom(code, game);
         }
         return NextResponse.json(game);

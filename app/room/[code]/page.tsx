@@ -16,6 +16,8 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [revealTimeLeft, setRevealTimeLeft] = useState(0);
+  const [eliminationTimeLeft, setEliminationTimeLeft] = useState(0);
+  const [impostorCountTimeLeft, setImpostorCountTimeLeft] = useState(0);
 
   const fetchGameState = useCallback(async () => {
     try {
@@ -41,6 +43,38 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'checkRevealPhase',
+        code: resolvedParams.code,
+        playerId: profile.id,
+      }),
+    });
+    
+    fetchGameState();
+  }, [profile, resolvedParams.code, fetchGameState]);
+
+  const checkEliminationResult = useCallback(async () => {
+    if (!profile) return;
+    
+    await fetch('/api/game', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'checkEliminationResult',
+        code: resolvedParams.code,
+        playerId: profile.id,
+      }),
+    });
+    
+    fetchGameState();
+  }, [profile, resolvedParams.code, fetchGameState]);
+
+  const checkImpostorCount = useCallback(async () => {
+    if (!profile) return;
+    
+    await fetch('/api/game', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'checkImpostorCount',
         code: resolvedParams.code,
         playerId: profile.id,
       }),
@@ -78,6 +112,40 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       return () => clearInterval(timer);
     }
   }, [gameState?.room.status, gameState?.room.revealEndTime, checkRevealPhase]);
+
+  useEffect(() => {
+    // Countdown timer for elimination result phase
+    if (gameState?.room.status === 'elimination_result' && gameState.room.eliminationResultEndTime) {
+      const timer = setInterval(() => {
+        const timeLeft = Math.max(0, gameState.room.eliminationResultEndTime! - Date.now());
+        setEliminationTimeLeft(Math.ceil(timeLeft / 1000));
+        
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          checkEliminationResult();
+        }
+      }, 100);
+      
+      return () => clearInterval(timer);
+    }
+  }, [gameState?.room.status, gameState?.room.eliminationResultEndTime, checkEliminationResult]);
+
+  useEffect(() => {
+    // Countdown timer for impostor count phase
+    if (gameState?.room.status === 'impostor_count' && gameState.room.impostorCountEndTime) {
+      const timer = setInterval(() => {
+        const timeLeft = Math.max(0, gameState.room.impostorCountEndTime! - Date.now());
+        setImpostorCountTimeLeft(Math.ceil(timeLeft / 1000));
+        
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          checkImpostorCount();
+        }
+      }, 100);
+      
+      return () => clearInterval(timer);
+    }
+  }, [gameState?.room.status, gameState?.room.impostorCountEndTime, checkImpostorCount]);
 
   useEffect(() => {
     // Update word and impostor status from game state when available
@@ -347,6 +415,88 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           </S.GameSection>
         )}
 
+        {/* Elimination Result Phase */}
+        {gameState.room.status === 'elimination_result' && gameState.eliminationResult && (
+          <S.GameSection>
+            <S.CountdownCard>
+              <h2>Elimination Result</h2>
+              <S.CountdownNumber>{eliminationTimeLeft}</S.CountdownNumber>
+            </S.CountdownCard>
+
+            <S.Card style={{ padding: '2rem', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>
+                <strong>{gameState.eliminationResult.playerName}</strong> was eliminated!
+              </h2>
+              <div style={{ 
+                fontSize: '1.5rem', 
+                fontWeight: 'bold',
+                color: gameState.eliminationResult.wasImpostor ? '#dc2626' : '#16a34a',
+                padding: '1rem',
+                borderRadius: '8px',
+                backgroundColor: gameState.eliminationResult.wasImpostor ? '#fef2f2' : '#f0fdf4'
+              }}>
+                {gameState.eliminationResult.wasImpostor ? '🎭 IMPOSTOR' : '✅ REGULAR'}
+              </div>
+            </S.Card>
+
+            <S.Card style={{ padding: '1.5rem', marginTop: '1rem' }}>
+              <h3 style={{ marginBottom: '1rem', color: '#5b4b8a' }}>Players</h3>
+              <S.PlayersGrid>
+                {gameState.room.players.map((player) => (
+                  <S.PlayerCard 
+                    key={player.id} 
+                    $eliminated={player.isEliminated}
+                    style={{
+                      borderColor: player.id === gameState.eliminationResult?.playerId
+                        ? (gameState.eliminationResult.wasImpostor ? '#dc2626' : '#16a34a')
+                        : undefined
+                    }}
+                  >
+                    <S.PlayerAvatar>{player.avatar}</S.PlayerAvatar>
+                    <S.PlayerName
+                      style={{
+                        color: player.id === gameState.eliminationResult?.playerId
+                          ? (gameState.eliminationResult.wasImpostor ? '#dc2626' : '#16a34a')
+                          : undefined
+                      }}
+                    >
+                      {player.name}
+                    </S.PlayerName>
+                    {player.isEliminated && (
+                      <S.EliminatedBadge>ELIMINATED</S.EliminatedBadge>
+                    )}
+                  </S.PlayerCard>
+                ))}
+              </S.PlayersGrid>
+            </S.Card>
+          </S.GameSection>
+        )}
+
+        {/* Impostor Count Phase */}
+        {gameState.room.status === 'impostor_count' && (
+          <S.GameSection>
+            <S.CountdownCard>
+              <h2>Round {gameState.room.currentRound}</h2>
+              <S.CountdownNumber>{impostorCountTimeLeft}</S.CountdownNumber>
+            </S.CountdownCard>
+
+            <S.Card style={{ padding: '2rem', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️ Impostors Remaining</h2>
+              <div style={{ 
+                fontSize: '3rem', 
+                fontWeight: 'bold',
+                color: '#dc2626',
+                marginBottom: '1rem'
+              }}>
+                {gameState.room.players.filter(p => !p.isEliminated && p.isImpostor).length}
+              </div>
+              <p style={{ fontSize: '1.125rem', color: '#64748b' }}>
+                Be careful who you trust...
+              </p>
+            </S.Card>
+          </S.GameSection>
+        )}
+
         {/* Voting Phase */}
         {gameState.room.status === 'voting' && (
           <S.VotingCard>
@@ -354,17 +504,6 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               <span>🗳️</span>
               <span>Vote for the Impostor</span>
             </h2>
-            
-            {gameState.eliminationResult && (
-              <S.EliminationResult>
-                <p>
-                  <strong>{gameState.eliminationResult.playerName}</strong> was eliminated!
-                </p>
-                <p>
-                  They were {gameState.eliminationResult.wasImpostor ? '🎭 an IMPOSTOR' : '✅ a REGULAR player'}
-                </p>
-              </S.EliminationResult>
-            )}
 
             {myPlayer?.isEliminated ? (
               <S.InfoText style={{ textAlign: 'center', padding: '2rem', fontSize: '1.125rem' }}>

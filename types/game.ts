@@ -24,12 +24,14 @@ export interface Room {
   code: string;
   host: string;
   players: Player[];
-  status: 'waiting' | 'revealing' | 'playing' | 'voting' | 'finished';
+  status: 'waiting' | 'revealing' | 'playing' | 'voting' | 'elimination_result' | 'impostor_count' | 'finished';
   createdAt: number;
   settings: RoomSettings;
   currentRound: number;
   currentTurnIndex?: number;
   revealEndTime?: number;
+  eliminationResultEndTime?: number;
+  impostorCountEndTime?: number;
 }
 
 export interface GameState {
