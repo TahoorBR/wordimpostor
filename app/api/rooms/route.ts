@@ -8,14 +8,14 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   
   if (code) {
-    const room = getRoom(code);
+    const room = await getRoom(code);
     if (!room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
     return NextResponse.json(room);
   }
   
-  const rooms = getAllRooms();
+  const rooms = await getAllRooms();
   return NextResponse.json(rooms);
 }
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         totalRounds: 3,
       };
       
-      const gameState = createRoom(host, roomCode, roomSettings);
+      const gameState = await createRoom(host, roomCode, roomSettings);
       return NextResponse.json(gameState);
     }
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         isHost: false,
         isReady: false,
       };
-      const gameState = addPlayerToRoom(code, playerData);
+      const gameState = await addPlayerToRoom(code, playerData);
       if (!gameState) {
         return NextResponse.json({ error: 'Room not found or full' }, { status: 400 });
       }

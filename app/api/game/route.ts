@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, code, playerId, data } = body;
 
-    const game = getRoom(code);
+    const game = await getRoom(code);
     if (!game) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         const player = game.room.players.find(p => p.id === playerId);
         if (player) {
           player.isReady = data.ready;
-          updateRoom(code, game);
+          await updateRoom(code, game);
         }
         return NextResponse.json(game);
       }
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
           };
         });
         
-        updateRoom(code, game);
+        await updateRoom(code, game);
         
         return NextResponse.json(game);
       }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         if (game.room.status === 'revealing' && game.room.revealEndTime && Date.now() >= game.room.revealEndTime) {
           game.room.status = 'playing';
           game.room.revealEndTime = undefined;
-          updateRoom(code, game);
+          await updateRoom(code, game);
         }
         return NextResponse.json(game);
       }
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
             game.room.currentTurnIndex = nextIndex;
           }
           
-          updateRoom(code, game);
+          await updateRoom(code, game);
         }
         return NextResponse.json(game);
       }
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
             round: game.room.currentRound || 1,
           });
           
-          updateRoom(code, game);
+          await updateRoom(code, game);
         }
         return NextResponse.json(game);
       }
@@ -204,14 +204,14 @@ export async function POST(request: Request) {
             }
           }
           
-          updateRoom(code, game);
+          await updateRoom(code, game);
         }
         return NextResponse.json(game);
       }
 
       case 'leave': {
-        removePlayerFromRoom(code, playerId);
-        const updatedGame = getRoom(code);
+        await removePlayerFromRoom(code, playerId);
+        const updatedGame = await getRoom(code);
         return NextResponse.json(updatedGame || { deleted: true });
       }
 

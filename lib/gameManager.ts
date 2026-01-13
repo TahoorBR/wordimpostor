@@ -1,10 +1,7 @@
 import { Room, GameState, Player, RoomSettings } from '@/types/game';
+import { kvStorage } from './kvStorage';
 
-// In-memory storage for rooms (in production, use a database)
-const rooms = new Map<string, GameState>();
-const roomExpiry = new Map<string, NodeJS.Timeout>();
-
-export const createRoom = (host: Player, code: string, settings: RoomSettings): GameState => {
+export const createRoom = async (host: Player, code: string, settings: RoomSettings): Promise<GameState> => {
   const room: Room = {
     id: code,
     code,
@@ -24,52 +21,29 @@ export const createRoom = (host: Player, code: string, settings: RoomSettings): 
     votes: [],
   };
 
-  rooms.set(code, gameState);
-  
-  // Auto-delete room after 2 hours of inactivity
-  setRoomExpiry(code);
+  await kvStorage.setRoom(code, gameState);
   
   return gameState;
 };
 
-export const getRoom = (code: string): GameState | undefined => {
-  return rooms.get(code);
+export const getRoom = async (code: string): Promise<GameState | null> => {
+  return await kvStorage.getRoom(code);
 };
 
-export const getAllRooms = (): GameState[] => {
-  return Array.from(rooms.values())
-    .filter(game => game.room.status === 'waiting')
-    .sort((a, b) => b.room.createdAt - a.room.createdAt)
-    .slice(0, 10);
+export const getAllRooms = async (): Promise<GameState[]> => {
+  return await kvStorage.getAllRooms();
 };
 
-export const updateRoom = (code: string, gameState: GameState): void => {
-  rooms.set(code, gameState);
-  setRoomExpiry(code);
+export const updateRoom = async (code: string, gameState: GameState): Promise<void> => {
+  await kvStorage.setRoom(code, gameState);
 };
 
-export const deleteRoom = (code: string): void => {
-  const timeout = roomExpiry.get(code);
-  if (timeout) {
-    clearTimeout(timeout);
-    roomExpiry.delete(code);
-  }
-  rooms.delete(code);
+export const deleteRoom = async (code: string): Promise<void> => {
+  await kvStorage.deleteRoom(code);
 };
 
-const setRoomExpiry = (code: string): void => {
-  const existing = roomExpiry.get(code);
-  if (existing) clearTimeout(existing);
-  
-  const timeout = setTimeout(() => {
-    deleteRoom(code);
-  }, 2 * 60 * 60 * 1000); // 2 hours
-  
-  roomExpiry.set(code, timeout);
-};
-
-export const addPlayerToRoom = (code: string, player: Player): GameState | null => {
-  const game = getRoom(code);
+export const addPlayerToRoom = async (code: string, player: Player): Promise<GameState | null> => {
+  const game = await getRoom(code);
   if (!game) return null;
   
   if (game.room.players.length >= game.room.settings.maxPlayers) {
@@ -82,24 +56,24 @@ export const addPlayerToRoom = (code: string, player: Player): GameState | null 
   }
   
   game.room.players.push(player);
-  updateRoom(code, game);
+  await updateRoom(code, game);
   return game;
 };
 
-export const removePlayerFromRoom = (code: string, playerId: string): void => {
-  const game = getRoom(code);
+export const removePlayerFromRoom = async (code: string, playerId: string): Promise<void> => {
+  const game = await getRoom(code);
   if (!game) return;
   
   game.room.players = game.room.players.filter(p => p.id !== playerId);
   
   if (game.room.players.length === 0) {
-    deleteRoom(code);
+    await deleteRoom(code);
   } else {
     // Transfer host if needed
     if (game.room.host === playerId) {
       game.room.host = game.room.players[0].id;
       game.room.players[0].isHost = true;
     }
-    updateRoom(code, game);
+    await updateRoom(code, game);
   }
 };
