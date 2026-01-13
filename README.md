@@ -1,8 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎭 Word Impostor Game
+
+A multiplayer social deduction word game where players try to identify the impostor among them!
+
+## Features
+
+- 🎮 Real-time multiplayer gameplay
+- 📱 Mobile and desktop responsive
+- 👥 Create and join rooms with codes
+- 🎭 Interactive game phases (waiting, playing, voting)
+- 💾 Profile persistence with cookies
+- 🎨 Beautiful gradient UI design
+- 🌐 Internet-based multiplayer
+
+## How to Play
+
+1. **Create a Profile**: Enter your name and choose an avatar
+2. **Create or Join a Room**: Start a new game or join with a 6-letter code
+3. **Get Your Word**: Most players get the same word, one impostor gets different
+4. **Give Clues**: Take turns giving one-word clues about your word
+5. **Vote**: Discuss and vote for who you think is the impostor
+6. **Win**: Civilians win if they catch the impostor, impostor wins if they avoid detection!
+
+## Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Data Persistence**: Cookies + LocalStorage
+- **Deployment**: Vercel (optimized)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ installed
+- npm or yarn package manager
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Run the development server:
 
 ```bash
 npm run dev
