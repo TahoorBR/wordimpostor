@@ -178,6 +178,16 @@ export async function POST(request: Request) {
             game.room.status = 'finished';
             game.revealed = true;
             game.winner = 'regulars';
+          } else if (remainingPlayers.length === remainingImpostors.length) {
+            // All remaining players are impostors - impostors win
+            game.room.status = 'finished';
+            game.revealed = true;
+            game.winner = 'impostors';
+          } else if (remainingPlayers.length === 2 && remainingImpostors.length === 1) {
+            // Only 2 players left and 1 is impostor - impostors win
+            game.room.status = 'finished';
+            game.revealed = true;
+            game.winner = 'impostors';
           } else if (game.room.currentRound >= game.room.settings.totalRounds) {
             // All rounds finished - impostors win if still alive
             game.room.status = 'finished';
