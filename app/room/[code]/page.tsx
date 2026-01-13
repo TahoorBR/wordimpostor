@@ -418,11 +418,6 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         {/* Elimination Result Phase */}
         {gameState.room.status === 'elimination_result' && gameState.eliminationResult && (
           <S.GameSection>
-            <S.CountdownCard>
-              <h2>Elimination Result</h2>
-              <S.CountdownNumber>{eliminationTimeLeft}</S.CountdownNumber>
-            </S.CountdownCard>
-
             <S.Card style={{ padding: '2rem', textAlign: 'center' }}>
               <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>
                 <strong>{gameState.eliminationResult.playerName}</strong> was eliminated!
@@ -475,12 +470,8 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         {/* Impostor Count Phase */}
         {gameState.room.status === 'impostor_count' && (
           <S.GameSection>
-            <S.CountdownCard>
-              <h2>Round {gameState.room.currentRound}</h2>
-              <S.CountdownNumber>{impostorCountTimeLeft}</S.CountdownNumber>
-            </S.CountdownCard>
-
             <S.Card style={{ padding: '2rem', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#5b4b8a' }}>Round {gameState.room.currentRound}</h2>
               <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️ Impostors Remaining</h2>
               <div style={{ 
                 fontSize: '3rem', 

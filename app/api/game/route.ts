@@ -205,6 +205,18 @@ export async function POST(request: Request) {
             game.room.status = 'impostor_count';
             game.room.impostorCountEndTime = Date.now() + 5000; // 5 seconds
             
+            // Get new word for regulars in the same category
+            const wordPair = getRandomWordPair(game.room.settings.category);
+            
+            // Update word assignments - give regulars new word, impostors stay empty
+            game.room.players.forEach(p => {
+              if (game.wordAssignments && game.wordAssignments[p.id]) {
+                if (!p.isImpostor && !p.isEliminated) {
+                  game.wordAssignments[p.id].word = wordPair.normal;
+                }
+              }
+            });
+            
             // Reset turn flags for next round
             game.room.players.forEach(p => {
               p.hasDoneTurn = false;
@@ -223,9 +235,10 @@ export async function POST(request: Request) {
       }
 
       case 'checkImpostorCount': {
-        // Auto-transition from impostor_count to playing after 5 seconds
+        // Auto-transition from impostor_count to revealing (show new words) after 5 seconds
         if (game.room.status === 'impostor_count' && game.room.impostorCountEndTime && Date.now() >= game.room.impostorCountEndTime) {
-          game.room.status = 'playing';
+          game.room.status = 'revealing';
+          game.room.revealEndTime = Date.now() + 15000; // 15 seconds to see new words
           game.room.currentTurnIndex = 0;
           game.room.impostorCountEndTime = undefined;
           await updateRoom(code, game);
