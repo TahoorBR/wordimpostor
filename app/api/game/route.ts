@@ -22,6 +22,23 @@ export async function POST(request: Request) {
         return NextResponse.json(game);
       }
 
+      case 'kick': {
+        // Only host can kick players
+        if (game.room.host !== playerId) {
+          return NextResponse.json({ error: 'Only host can kick players' }, { status: 403 });
+        }
+        
+        // Can't kick yourself
+        if (data.targetPlayerId === playerId) {
+          return NextResponse.json({ error: 'Cannot kick yourself' }, { status: 400 });
+        }
+        
+        // Remove the player
+        game.room.players = game.room.players.filter(p => p.id !== data.targetPlayerId);
+        await updateRoom(code, game);
+        return NextResponse.json(game);
+      }
+
       case 'start': {
         if (game.room.host !== playerId) {
           return NextResponse.json({ error: 'Only host can start' }, { status: 403 });
@@ -70,6 +87,8 @@ export async function POST(request: Request) {
         if (game.room.status === 'revealing' && game.room.revealEndTime && Date.now() >= game.room.revealEndTime) {
           game.room.status = 'playing';
           game.room.revealEndTime = undefined;
+          // Set turn timer for first player
+          game.room.turnEndTime = Date.now() + 20000; // 20 seconds
           await updateRoom(code, game);
         }
         return NextResponse.json(game);
@@ -87,6 +106,7 @@ export async function POST(request: Request) {
           if (allDoneTurn) {
             // All players done, move to voting
             game.room.status = 'voting';
+            game.room.turnEndTime = undefined;
           } else {
             // Find next player who hasn't done their turn
             let nextIndex = (game.room.currentTurnIndex || 0) + 1;
@@ -102,9 +122,53 @@ export async function POST(request: Request) {
               }
             }
             game.room.currentTurnIndex = nextIndex;
+            // Set turn timer for next player
+            game.room.turnEndTime = Date.now() + 20000; // 20 seconds
           }
           
           await updateRoom(code, game);
+        }
+        return NextResponse.json(game);
+      }
+
+      case 'checkTurnTimer': {
+        // Auto-skip turn after 20 seconds
+        if (game.room.status === 'playing' && game.room.turnEndTime && Date.now() >= game.room.turnEndTime) {
+          const currentPlayer = game.room.players[game.room.currentTurnIndex || 0];
+          
+          if (currentPlayer && !currentPlayer.hasDoneTurn && !currentPlayer.isEliminated) {
+            // Auto-mark as done
+            currentPlayer.hasDoneTurn = true;
+            
+            // Move to next player
+            const nonEliminatedPlayers = game.room.players.filter(p => !p.isEliminated);
+            const allDoneTurn = nonEliminatedPlayers.every(p => p.hasDoneTurn);
+            
+            if (allDoneTurn) {
+              // All players done, move to voting
+              game.room.status = 'voting';
+              game.room.turnEndTime = undefined;
+            } else {
+              // Find next player
+              let nextIndex = (game.room.currentTurnIndex || 0) + 1;
+              while (nextIndex < game.room.players.length && 
+                     (game.room.players[nextIndex].isEliminated || game.room.players[nextIndex].hasDoneTurn)) {
+                nextIndex++;
+              }
+              if (nextIndex >= game.room.players.length) {
+                nextIndex = 0;
+                while (nextIndex < game.room.players.length && 
+                       (game.room.players[nextIndex].isEliminated || game.room.players[nextIndex].hasDoneTurn)) {
+                  nextIndex++;
+                }
+              }
+              game.room.currentTurnIndex = nextIndex;
+              // Set turn timer for next player
+              game.room.turnEndTime = Date.now() + 20000;
+            }
+            
+            await updateRoom(code, game);
+          }
         }
         return NextResponse.json(game);
       }

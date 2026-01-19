@@ -150,6 +150,35 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   }, [gameState?.room.status, gameState?.room.impostorCountEndTime, checkImpostorCount]);
 
   useEffect(() => {
+    // Poll for turn timer auto-skip
+    if (!gameState || gameState.room.status !== 'playing') return;
+
+    const checkInterval = setInterval(async () => {
+      if (!profile) return;
+      
+      try {
+        const response = await fetch('/api/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: resolvedParams.code,
+            playerId: profile.id,
+            action: 'checkTurnTimer',
+          }),
+        });
+
+        if (response.ok) {
+          fetchGameState();
+        }
+      } catch (err) {
+        console.error('Error checking turn timer:', err);
+      }
+    }, 1000);
+
+    return () => clearInterval(checkInterval);
+  }, [gameState?.room.status, profile, resolvedParams.code, fetchGameState]);
+
+  useEffect(() => {
     // Update word and impostor status from game state when available
     if (profile && gameState?.wordAssignments && gameState.wordAssignments[profile.id]) {
       const assignment = gameState.wordAssignments[profile.id];
@@ -209,6 +238,35 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       fetchGameState();
     } catch (err) {
       setError('Failed to start game. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const kickPlayer = async (targetPlayerId: string) => {
+    if (!profile) return;
+    
+    setActionLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'kick',
+          code: resolvedParams.code,
+          playerId: profile.id,
+          data: { targetPlayerId },
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to kick player');
+      }
+      
+      fetchGameState();
+    } catch (err) {
+      setError('Failed to kick player. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -343,6 +401,11 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
                   )}
                   {player.isReady && (
                     <S.ReadyBadge>✓ READY</S.ReadyBadge>
+                  )}
+                  {isHost && player.id !== profile.id && (
+                    <S.KickButton onClick={() => kickPlayer(player.id)} disabled={actionLoading}>
+                      ✕
+                    </S.KickButton>
                   )}
                 </S.PlayerCard>
               ))}

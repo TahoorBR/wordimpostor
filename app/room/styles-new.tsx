@@ -204,6 +204,35 @@ export const ReadyBadge = styled.div`
   letter-spacing: 0.02em;
 `;
 
+export const KickButton = styled.button`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: #fecaca;
+    transform: scale(1.1);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 export const EliminatedBadge = styled.div`
   background: #fee2e2;
   color: #991b1b;

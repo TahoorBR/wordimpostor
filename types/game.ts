@@ -31,6 +31,7 @@ export interface Room {
   revealEndTime?: number;
   eliminationResultEndTime?: number;
   impostorCountEndTime?: number;
+  turnEndTime?: number;
 }
 
 export interface GameState {
